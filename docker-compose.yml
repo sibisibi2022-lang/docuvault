@@ -1,5 +1,13 @@
-# Local development dependencies. Production uses Neon for Postgres and an
-# S3-compatible bucket for files, so nothing here is deployed.
+# Two ways to use this file.
+#
+#   docker compose up -d
+#       Postgres only — what you want while developing, with the API and the
+#       Angular dev server running on the host.
+#
+#   docker compose --profile app up -d --build
+#       The whole application. Nothing but Docker is needed on the machine: no
+#       Java, no Node, no Maven. Open http://localhost:8088 when it finishes.
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -18,5 +26,51 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./backend
+    container_name: docuvault-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Inside the compose network Postgres answers to its service name, and
+      # serves plaintext — Neon is the one that requires sslmode=require.
+      DB_URL: jdbc:postgresql://postgres:5432/docuvault?sslmode=disable
+      DB_USERNAME: docuvault
+      DB_PASSWORD: docuvault
+      # Demo-only key. A real deployment supplies its own and the app refuses
+      # to start without one: openssl rand -base64 48
+      JWT_SECRET: ${JWT_SECRET:-ZG9ja2VyLWNvbXBvc2UtZGVtby1rZXktbm90LWZvci1wcm9kdWN0aW9uLXVzZS0wMQ==}
+      CORS_ALLOWED_ORIGINS: http://localhost:8088
+      STORAGE_TYPE: local
+      STORAGE_DIR: /data/storage
+    volumes:
+      # Uploads survive a container restart. In a real deployment this is
+      # object storage instead — see docs/DEPLOYMENT.md.
+      - docuvault-files:/data/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+    container_name: docuvault-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # 8088 rather than 80, which needs root, or 4200, which collides with a
+      # dev server someone may already be running.
+      - "8088:80"
+
 volumes:
   docuvault-pgdata:
+  docuvault-files:

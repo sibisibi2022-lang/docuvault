@@ -11,12 +11,35 @@ docuvault/
 └── docker-compose.yml   local Postgres
 ```
 
-## Run it locally
+## Run it on any machine
 
-You need Java 17+, Maven, Node 22.12+ and Docker.
+**Docker is the only thing you need installed.** No Java, no Node, no Maven.
 
 ```bash
-# 1. Database
+git clone <this-repo> docuvault
+cd docuvault
+docker compose --profile app up -d --build
+```
+
+The first build takes a few minutes while it compiles the API and the app
+inside the containers. When it finishes, open **http://localhost:8088**.
+
+Register an account — **the first account on a fresh database becomes the
+administrator**. Everyone after that is an employee, promoted from
+**Profile → People**.
+
+```bash
+docker compose --profile app logs -f    # watch it start
+docker compose --profile app down       # stop it
+docker compose --profile app down -v    # stop it and erase the data
+```
+
+## Run it for development
+
+With Java 17+, Maven, Node 22.12+ and Docker:
+
+```bash
+# 1. Database only
 docker compose up -d
 
 # 2. API  → http://localhost:8080  (docs at /swagger-ui.html)
@@ -26,9 +49,16 @@ cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 cd frontend && npm install && npm start
 ```
 
-Open http://localhost:4200 and register. **The first account created becomes the
-administrator**; every account after that is an employee, and only an
-administrator can change a role.
+If port 8080 is taken on your machine, run the API elsewhere and point the dev
+server at it — the port is not baked into any tracked file:
+
+```bash
+cd backend  && PORT=8081 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+cd frontend && API_URL=http://localhost:8081 npm start
+```
+
+The dev server proxies `/api` to the backend, so development is same-origin and
+CORS never enters the picture locally.
 
 ## How access control works
 
