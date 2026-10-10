@@ -34,16 +34,22 @@ docker compose --profile app down       # stop it
 docker compose --profile app down -v    # stop it and erase the data
 ```
 
+## Run it without Docker
+
+Java, Node and PostgreSQL installed natively, then two commands. Maven is not
+needed — the repository carries a wrapper. Step-by-step for macOS, Windows and
+Linux: **[docs/RUN-WITHOUT-DOCKER.md](docs/RUN-WITHOUT-DOCKER.md)**.
+
 ## Run it for development
 
-With Java 17+, Maven, Node 22.12+ and Docker:
+With Java 17+, Node 22.12+ and Docker (Maven optional — use `./mvnw`):
 
 ```bash
 # 1. Database only
 docker compose up -d
 
 # 2. API  → http://localhost:8080  (docs at /swagger-ui.html)
-cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev
+cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 3. App  → http://localhost:4200
 cd frontend && npm install && npm start
@@ -53,7 +59,7 @@ If port 8080 is taken on your machine, run the API elsewhere and point the dev
 server at it — the port is not baked into any tracked file:
 
 ```bash
-cd backend  && PORT=8081 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+cd backend  && PORT=8081 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 cd frontend && API_URL=http://localhost:8081 npm start
 ```
 
@@ -100,7 +106,7 @@ Two rules are worth stating explicitly:
 ## Testing
 
 ```bash
-cd backend && mvn test      # needs Docker: runs against real Postgres via Testcontainers
+cd backend && ./mvnw test   # needs Docker: runs against real Postgres via Testcontainers
 cd frontend && npm test
 ```
 
