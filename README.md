@@ -50,6 +50,23 @@ Two rules are worth stating explicitly:
   managers may POST here"; they cannot express "only the owner may open document
   42". That check is in `DocumentService`, not `SecurityConfig`.
 
+## Working with documents
+
+- **Preview before upload.** Choosing or dropping a file shows it immediately —
+  images inline, PDFs in the browser's own viewer, the head of text and CSV
+  files as text, and name/type/size for everything else. The client applies the
+  same allowlist and 25 MB limit the server does, so a file that would be
+  rejected is caught before it is sent, not after.
+- **Drag and drop**, with the title pre-filled from the filename.
+- **Bulk actions.** Tick rows to move them into a category, download them as a
+  zip, or delete them together. Only rows the caller may act on are selectable,
+  and the API re-checks every id — a bulk request reports per-id failures rather
+  than letting one document the caller does not own cancel the rest.
+- **Versioning.** Attaching a file to an existing document creates a new
+  version; an identical file is refused, because a version with nothing new in
+  it is not worth keeping. De-duplication is per document, so two separate
+  documents may hold the same file.
+
 ## Testing
 
 ```bash

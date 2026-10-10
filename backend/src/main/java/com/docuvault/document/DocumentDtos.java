@@ -99,6 +99,29 @@ public final class DocumentDtos {
         }
     }
 
+    /** Ids for an action that applies to several documents at once. */
+    public record BulkRequest(
+            @jakarta.validation.constraints.NotEmpty(message = "Select at least one document")
+            @jakarta.validation.constraints.Size(max = 200, message = "At most 200 documents at a time")
+            java.util.List<Long> ids,
+
+            /** Only read by the move endpoint; null clears the category. */
+            Long categoryId) {
+    }
+
+    /**
+     * Outcome of a bulk action.
+     *
+     * <p>Reports per-id failures rather than failing the whole batch, so one
+     * document the caller does not own cannot silently cancel the other
+     * nineteen they do.
+     */
+    public record BulkResult(int requested, int succeeded, java.util.List<BulkFailure> failures) {
+    }
+
+    public record BulkFailure(Long id, String reason) {
+    }
+
     /** Aggregates for the dashboard, computed in SQL rather than in Java. */
     public record DashboardStats(
             long documentCount,

@@ -3,7 +3,9 @@ import { RouterLink } from '@angular/router';
 import { DocumentsApi } from '../../core/api/documents.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import type { DocumentSummary, DocumentVersion } from '../../core/models/api.models';
+import { ConfirmService } from '../../shared/confirm.service';
 import { formatBytes, formatDateTime, saveBlob } from '../../shared/format';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-versions',
@@ -16,13 +18,14 @@ export class VersionsComponent {
   readonly id = input.required<string>();
 
   private readonly api = inject(DocumentsApi);
+  private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   protected readonly auth = inject(AuthStore);
 
   protected readonly document = signal<DocumentSummary | null>(null);
   protected readonly versions = signal<DocumentVersion[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly notice = signal<string | null>(null);
 
   protected readonly formatBytes = formatBytes;
   protected readonly formatDateTime = formatDateTime;
@@ -59,17 +62,21 @@ export class VersionsComponent {
     });
   }
 
-  protected restore(version: DocumentVersion): void {
-    if (!confirm(`Make version ${version.versionNumber} the current file?`)) {
-      return;
-    }
+  protected async restore(version: DocumentVersion): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: `Restore version ${version.versionNumber}?`,
+      message:
+        'It becomes the current file. Nothing is erased — the version history keeps every entry it has now.',
+      confirmLabel: 'Restore',
+    });
+    if (!confirmed) return;
 
     this.api.restoreVersion(Number(this.id()), version.id).subscribe({
       next: () => {
-        this.notice.set(`Version ${version.versionNumber} is now current`);
+        this.toasts.success(`Version ${version.versionNumber} is now current`);
         this.load();
       },
-      error: (err: Error) => this.error.set(err.message),
+      error: (err: Error) => this.toasts.error(err.message),
     });
   }
 

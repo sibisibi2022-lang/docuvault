@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type {
+  BulkResult,
   DashboardStats,
   DocumentSummary,
   DocumentVersion,
@@ -71,6 +72,20 @@ export class DocumentsApi {
       `${this.base}/${documentId}/versions/${versionId}/restore`,
       {},
     );
+  }
+
+  // --------------------------------------------------------------- bulk
+
+  bulkDelete(ids: number[]): Observable<BulkResult> {
+    return this.http.post<BulkResult>(`${this.base}/bulk-delete`, { ids });
+  }
+
+  bulkMoveToCategory(ids: number[], categoryId: number | null): Observable<BulkResult> {
+    return this.http.patch<BulkResult>(`${this.base}/bulk-category`, { ids, categoryId });
+  }
+
+  bulkDownload(ids: number[]): Observable<Blob> {
+    return this.http.post(`${this.base}/bulk-download`, { ids }, { responseType: 'blob' });
   }
 
   /**

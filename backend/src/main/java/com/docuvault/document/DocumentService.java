@@ -6,6 +6,7 @@ import com.docuvault.security.AuthenticatedUser;
 import com.docuvault.shared.audit.AuditAction;
 import com.docuvault.shared.audit.AuditService;
 import com.docuvault.shared.config.AppProperties;
+import com.docuvault.shared.error.ApiException;
 import com.docuvault.shared.error.BadRequestException;
 import com.docuvault.shared.error.ConflictException;
 import com.docuvault.shared.error.NotFoundException;
@@ -15,8 +16,13 @@ import com.docuvault.user.User;
 import com.docuvault.user.UserRepository;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -278,6 +284,127 @@ public class DocumentService {
 
         auditService.record(AuditAction.DOCUMENT_DELETED, actor, null, "Deleted \"" + title + "\"");
         log.info("User {} deleted document {}", caller.id(), id);
+    }
+
+    // ------------------------------------------------------------ bulk actions
+
+    /**
+     * Deletes several documents, skipping any the caller may not touch.
+     *
+     * <p>A per-id failure is recorded and the loop continues rather than
+     * throwing, so the transaction is never rolled back by one bad id and the
+     * caller gets a precise account of what happened.
+     */
+    @Transactional
+    public DocumentDtos.BulkResult bulkDelete(AuthenticatedUser caller, List<Long> ids) {
+        List<Long> unique = ids.stream().distinct().toList();
+        List<DocumentDtos.BulkFailure> failures = new ArrayList<>();
+        Set<String> keysToRemove = new LinkedHashSet<>();
+        User actor = requireUser(caller.id());
+        int succeeded = 0;
+
+        for (Long id : unique) {
+            try {
+                Document document = loadWritable(caller, id);
+
+                keysToRemove.addAll(versionRepository.findStorageKeysByDocumentId(id));
+                keysToRemove.add(document.getStorageKey());
+
+                versionRepository.deleteAllByDocumentId(id);
+                documentRepository.delete(document);
+                documentRepository.flush();
+
+                auditService.record(AuditAction.DOCUMENT_DELETED, actor, null,
+                        "Deleted \"" + document.getTitle() + "\"");
+                succeeded++;
+
+            } catch (ApiException e) {
+                failures.add(new DocumentDtos.BulkFailure(id, e.getMessage()));
+            }
+        }
+
+        // Blobs go last: a storage failure then leaves orphaned objects rather
+        // than rows that point at files which no longer exist.
+        keysToRemove.forEach(storageService::delete);
+
+        log.info("User {} bulk-deleted {}/{} documents", caller.id(), succeeded, unique.size());
+        return new DocumentDtos.BulkResult(unique.size(), succeeded, failures);
+    }
+
+    /** Moves several documents into one category, or out of any category when null. */
+    @Transactional
+    public DocumentDtos.BulkResult bulkMoveToCategory(AuthenticatedUser caller, List<Long> ids, Long categoryId) {
+        Category category = resolveCategory(categoryId);
+        List<Long> unique = ids.stream().distinct().toList();
+        List<DocumentDtos.BulkFailure> failures = new ArrayList<>();
+        User actor = requireUser(caller.id());
+        int succeeded = 0;
+
+        for (Long id : unique) {
+            try {
+                Document document = loadWritable(caller, id);
+                document.setCategory(category);
+                succeeded++;
+            } catch (ApiException e) {
+                failures.add(new DocumentDtos.BulkFailure(id, e.getMessage()));
+            }
+        }
+
+        if (succeeded > 0) {
+            auditService.record(AuditAction.DOCUMENT_UPDATED, actor, null,
+                    "Moved %d document(s) to %s".formatted(
+                            succeeded, category == null ? "no category" : "\"" + category.getName() + "\""));
+        }
+
+        return new DocumentDtos.BulkResult(unique.size(), succeeded, failures);
+    }
+
+    /**
+     * Streams the selected documents as a zip, written straight to the response.
+     *
+     * <p>Nothing is buffered: each entry is copied from storage into the zip
+     * stream as it goes, so downloading fifty files costs the same memory as
+     * downloading one.
+     */
+    @Transactional(readOnly = true)
+    public void streamAsZip(AuthenticatedUser caller, List<Long> ids, OutputStream target) throws IOException {
+        Set<String> usedNames = new LinkedHashSet<>();
+
+        try (ZipOutputStream zip = new ZipOutputStream(target)) {
+            for (Long id : ids.stream().distinct().toList()) {
+                Document document;
+                try {
+                    document = loadReadable(caller, id);
+                } catch (ApiException e) {
+                    // Skip anything the caller cannot see; the zip simply omits it.
+                    continue;
+                }
+
+                zip.putNextEntry(new ZipEntry(uniqueEntryName(usedNames, document.getFileName())));
+                try (InputStream content = storageService.retrieve(document.getStorageKey())) {
+                    content.transferTo(zip);
+                }
+                zip.closeEntry();
+            }
+        }
+    }
+
+    /** Zip entries must be unique, so a second "report.pdf" becomes "report (2).pdf". */
+    private String uniqueEntryName(Set<String> used, String fileName) {
+        if (used.add(fileName)) {
+            return fileName;
+        }
+
+        int dot = fileName.lastIndexOf('.');
+        String stem = dot > 0 ? fileName.substring(0, dot) : fileName;
+        String extension = dot > 0 ? fileName.substring(dot) : "";
+
+        for (int n = 2; ; n++) {
+            String candidate = "%s (%d)%s".formatted(stem, n, extension);
+            if (used.add(candidate)) {
+                return candidate;
+            }
+        }
     }
 
     // -------------------------------------------------------------- downloads

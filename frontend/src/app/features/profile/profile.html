@@ -4,13 +4,6 @@
     <p class="mt-1 text-sm text-slate-500">Your account details and security settings.</p>
   </div>
 
-  @if (notice()) {
-    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
-  }
-  @if (error()) {
-    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
-  }
-
   @if (loading()) {
     <p class="text-sm text-slate-500">Loading…</p>
   } @else if (profile(); as me) {

@@ -7,18 +7,17 @@
     <button type="button" class="btn-primary" (click)="openCreate()">New category</button>
   </div>
 
-  @if (notice()) {
-    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
-  }
-  @if (error() && !dialogOpen()) {
-    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
-  }
-
   <div class="card overflow-hidden">
     @if (loading()) {
       <p class="px-5 py-12 text-center text-sm text-slate-500">Loading…</p>
     } @else if (!categories().length) {
-      <p class="px-5 py-12 text-center text-sm text-slate-500">No categories yet.</p>
+      <div class="px-5 py-16 text-center">
+        <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-2xl"
+              aria-hidden="true">🏷️</span>
+        <p class="text-sm font-medium text-slate-700">No categories yet</p>
+        <p class="mt-1 text-sm text-slate-500">Create one to start filing documents.</p>
+        <button type="button" class="btn-primary mt-4" (click)="openCreate()">New category</button>
+      </div>
     } @else {
       <ul class="divide-y divide-slate-100">
         @for (category of categories(); track category.id) {

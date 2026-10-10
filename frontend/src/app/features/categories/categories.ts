@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CategoriesApi } from '../../core/api/categories.api';
 import type { Category } from '../../core/models/api.models';
+import { ConfirmService } from '../../shared/confirm.service';
 import { formatDateTime } from '../../shared/format';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-categories',
@@ -13,11 +15,12 @@ import { formatDateTime } from '../../shared/format';
 export class CategoriesComponent {
   private readonly api = inject(CategoriesApi);
   private readonly fb = inject(FormBuilder);
+  private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly categories = signal<Category[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly notice = signal<string | null>(null);
 
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<Category | null>(null);
@@ -42,7 +45,7 @@ export class CategoriesComponent {
         this.loading.set(false);
       },
       error: (err: Error) => {
-        this.error.set(err.message);
+        this.toasts.error(err.message);
         this.loading.set(false);
       },
     });
@@ -85,7 +88,7 @@ export class CategoriesComponent {
       next: () => {
         this.saving.set(false);
         this.dialogOpen.set(false);
-        this.notice.set(target ? 'Category updated' : 'Category created');
+        this.toasts.success(target ? 'Category updated' : 'Category created');
         this.load();
       },
       error: (err: Error) => {
@@ -95,19 +98,23 @@ export class CategoriesComponent {
     });
   }
 
-  protected remove(category: Category): void {
-    if (!confirm(`Delete the category "${category.name}"?`)) {
-      return;
-    }
+  protected async remove(category: Category): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Delete this category?',
+      message: `"${category.name}" will be removed. Documents still filed under it must be moved first.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!confirmed) return;
 
     this.api.delete(category.id).subscribe({
       next: () => {
-        this.notice.set('Category deleted');
+        this.toasts.success('Category deleted');
         this.load();
       },
       // The API refuses to delete a category that still has documents, and
       // says so — surface that rather than a generic failure.
-      error: (err: Error) => this.error.set(err.message),
+      error: (err: Error) => this.toasts.error(err.message),
     });
   }
 }

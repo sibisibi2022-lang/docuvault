@@ -18,14 +18,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -86,6 +89,44 @@ public class DocumentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal AuthenticatedUser caller, @PathVariable Long id) {
         documentService.delete(caller, id);
+    }
+
+    // ------------------------------------------------------------ bulk actions
+
+    @PostMapping("/bulk-delete")
+    @Operation(summary = "Delete several documents",
+            description = "Skips any the caller may not delete and reports them in the result.")
+    public DocumentDtos.BulkResult bulkDelete(@AuthenticationPrincipal AuthenticatedUser caller,
+                                              @Valid @RequestBody DocumentDtos.BulkRequest request) {
+        return documentService.bulkDelete(caller, request.ids());
+    }
+
+    @PatchMapping("/bulk-category")
+    @Operation(summary = "Move several documents into one category",
+            description = "A null categoryId removes them from any category.")
+    public DocumentDtos.BulkResult bulkMoveToCategory(@AuthenticationPrincipal AuthenticatedUser caller,
+                                                      @Valid @RequestBody DocumentDtos.BulkRequest request) {
+        return documentService.bulkMoveToCategory(caller, request.ids(), request.categoryId());
+    }
+
+    @PostMapping("/bulk-download")
+    @Operation(summary = "Download several documents as a zip")
+    public ResponseEntity<StreamingResponseBody> bulkDownload(
+            @AuthenticationPrincipal AuthenticatedUser caller,
+            @Valid @RequestBody DocumentDtos.BulkRequest request) {
+
+        // StreamingResponseBody writes directly to the servlet output stream, so
+        // the zip is never assembled in memory or on disk first.
+        StreamingResponseBody body = out -> documentService.streamAsZip(caller, request.ids(), out);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("docuvault-documents.zip", java.nio.charset.StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.valueOf("application/zip"))
+                .body(body);
     }
 
     @GetMapping("/{id}/download")

@@ -4,6 +4,7 @@ import { UsersApi } from '../../core/api/users.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import type { Role, UserProfile } from '../../core/models/api.models';
 import { formatDateTime } from '../../shared/format';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-profile',
@@ -14,13 +15,13 @@ import { formatDateTime } from '../../shared/format';
 export class ProfileComponent {
   private readonly api = inject(UsersApi);
   private readonly fb = inject(FormBuilder);
+  private readonly toasts = inject(ToastService);
   protected readonly auth = inject(AuthStore);
 
   protected readonly profile = signal<UserProfile | null>(null);
   protected readonly people = signal<UserProfile[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly notice = signal<string | null>(null);
   protected readonly savingProfile = signal(false);
   protected readonly savingPassword = signal(false);
 
@@ -44,7 +45,7 @@ export class ProfileComponent {
         this.loading.set(false);
       },
       error: (err: Error) => {
-        this.error.set(err.message);
+        this.toasts.error(err.message);
         this.loading.set(false);
       },
     });
@@ -59,7 +60,7 @@ export class ProfileComponent {
   private loadPeople(): void {
     this.api.list(null).subscribe({
       next: (page) => this.people.set(page.content),
-      error: (err: Error) => this.error.set(err.message),
+      error: (err: Error) => this.toasts.error(err.message),
     });
   }
 
@@ -77,11 +78,11 @@ export class ProfileComponent {
         this.profile.set(profile);
         // Keep the header's cached name in step with the saved one.
         this.auth.patchName(profile.name);
-        this.notice.set('Profile updated');
+        this.toasts.success('Profile updated');
         this.savingProfile.set(false);
       },
       error: (err: Error) => {
-        this.error.set(err.message);
+        this.toasts.error(err.message);
         this.savingProfile.set(false);
       },
     });
@@ -99,11 +100,11 @@ export class ProfileComponent {
     this.api.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
         this.passwordForm.reset({ currentPassword: '', newPassword: '' });
-        this.notice.set('Password changed');
+        this.toasts.success('Password changed');
         this.savingPassword.set(false);
       },
       error: (err: Error) => {
-        this.error.set(err.message);
+        this.toasts.error(err.message);
         this.savingPassword.set(false);
       },
     });
@@ -112,12 +113,12 @@ export class ProfileComponent {
   protected changeRole(person: UserProfile, role: string): void {
     this.api.changeRole(person.id, role as Role).subscribe({
       next: () => {
-        this.notice.set(`${person.name} is now ${role}`);
+        this.toasts.success(`${person.name} is now ${role}`);
         this.loadPeople();
       },
       // Refuses when it would remove the last administrator, and says why.
       error: (err: Error) => {
-        this.error.set(err.message);
+        this.toasts.error(err.message);
         this.loadPeople();
       },
     });
@@ -126,10 +127,10 @@ export class ProfileComponent {
   protected toggleEnabled(person: UserProfile): void {
     this.api.setEnabled(person.id, !person.enabled).subscribe({
       next: () => {
-        this.notice.set(`${person.name} ${person.enabled ? 'disabled' : 'enabled'}`);
+        this.toasts.success(`${person.name} ${person.enabled ? 'disabled' : 'enabled'}`);
         this.loadPeople();
       },
-      error: (err: Error) => this.error.set(err.message),
+      error: (err: Error) => this.toasts.error(err.message),
     });
   }
 }

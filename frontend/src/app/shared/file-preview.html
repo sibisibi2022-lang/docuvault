@@ -1,0 +1,53 @@
+@if (file(); as selected) {
+  <div class="rounded-lg border border-slate-200 bg-slate-50">
+    <div class="flex items-center gap-3 border-b border-slate-200 px-3 py-2">
+      <span class="badge bg-white text-slate-600">{{ label() }}</span>
+      <p class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900" [title]="selected.name">
+        {{ selected.name }}
+      </p>
+      <span class="shrink-0 text-xs text-slate-500">{{ size() }}</span>
+    </div>
+
+    @if (problem(); as issue) {
+      <p class="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+        {{ issue }}
+      </p>
+    }
+
+    <div class="p-3">
+      @switch (kind()) {
+        @case ('image') {
+          @if (imageUrl(); as src) {
+            <img [src]="src" [alt]="selected.name"
+                 class="mx-auto max-h-56 rounded border border-slate-200 bg-white object-contain" />
+          }
+        }
+        @case ('pdf') {
+          @if (pdfUrl(); as src) {
+            <iframe [src]="src" [title]="'Preview of ' + selected.name"
+                    class="h-56 w-full rounded border border-slate-200 bg-white"></iframe>
+          }
+        }
+        @case ('text') {
+          @if (textSnippet(); as text) {
+            <pre class="max-h-56 overflow-auto rounded border border-slate-200 bg-white p-2 text-xs text-slate-700">{{ text }}</pre>
+            @if (textTruncated()) {
+              <p class="mt-1 text-xs text-slate-400">Showing the first 4 KB.</p>
+            }
+          } @else {
+            <p class="py-6 text-center text-xs text-slate-400">Reading file…</p>
+          }
+        }
+        @default {
+          <div class="flex flex-col items-center gap-1 py-6 text-center">
+            <span class="grid h-12 w-12 place-items-center rounded-lg bg-white text-xl"
+                  aria-hidden="true">📄</span>
+            <p class="text-xs text-slate-500">
+              No inline preview for {{ label() }} files — it will upload normally.
+            </p>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

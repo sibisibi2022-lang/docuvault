@@ -27,25 +27,77 @@
     </select>
   </div>
 
-  @if (notice()) {
-    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
+  @if (loadError()) {
+    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ loadError() }}</p>
   }
-  @if (error() && !dialogOpen()) {
-    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
+
+  <!-- Bulk action bar, shown only when something is ticked -->
+  @if (selectedCount() > 0) {
+    <div class="flex flex-wrap items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
+      <span class="text-sm font-medium text-brand-800">
+        {{ selectedCount() }} selected
+      </span>
+
+      <select class="field max-w-[12rem] py-1 text-sm" [disabled]="bulkBusy()"
+              (change)="bulkMove($any($event.target).value); $any($event.target).value = ''">
+        <option value="" disabled selected>Move to category…</option>
+        <option value="">No category</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.id">{{ category.name }}</option>
+        }
+      </select>
+
+      <button type="button" class="btn-secondary px-3 py-1 text-xs" [disabled]="bulkBusy()"
+              (click)="bulkDownload()">Download as zip</button>
+      <button type="button" class="btn-danger px-3 py-1 text-xs" [disabled]="bulkBusy()"
+              (click)="bulkDelete()">Delete</button>
+
+      <button type="button" class="ml-auto text-sm text-brand-700 underline hover:text-brand-800"
+              (click)="clearSelection()">Clear</button>
+    </div>
   }
 
   <div class="card overflow-hidden">
     @if (loading()) {
-      <p class="px-5 py-12 text-center text-sm text-slate-500">Loading…</p>
-    } @else if (!page()?.content?.length) {
+      <!-- Skeleton rows rather than a spinner: the layout does not jump when data lands -->
+      <div class="divide-y divide-slate-100">
+        @for (row of [1, 2, 3, 4, 5]; track row) {
+          <div class="flex items-center gap-4 px-5 py-4">
+            <div class="h-4 w-4 animate-pulse rounded bg-slate-200"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-3 w-48 animate-pulse rounded bg-slate-200"></div>
+              <div class="h-2.5 w-32 animate-pulse rounded bg-slate-100"></div>
+            </div>
+            <div class="h-3 w-20 animate-pulse rounded bg-slate-200"></div>
+            <div class="h-6 w-28 animate-pulse rounded bg-slate-100"></div>
+          </div>
+        }
+      </div>
+    } @else if (!rows().length) {
       <div class="px-5 py-16 text-center">
-        <p class="text-sm text-slate-500">No documents match your filters.</p>
+        <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-2xl"
+              aria-hidden="true">📁</span>
+        @if (search() || categoryFilter()) {
+          <p class="text-sm font-medium text-slate-700">No documents match your filters</p>
+          <p class="mt-1 text-sm text-slate-500">Try a different search term or category.</p>
+        } @else {
+          <p class="text-sm font-medium text-slate-700">No documents yet</p>
+          <p class="mt-1 text-sm text-slate-500">Upload your first file to get started.</p>
+          <button type="button" class="btn-primary mt-4" (click)="openUpload()">Upload document</button>
+        }
       </div>
     } @else {
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              <th scope="col" class="w-10 px-5 py-3">
+                @if (selectableRows().length) {
+                  <input type="checkbox" class="h-4 w-4 rounded border-slate-300"
+                         [checked]="allSelected()" (change)="toggleAll()"
+                         aria-label="Select all documents on this page" />
+                }
+              </th>
               <th scope="col" class="px-5 py-3 font-medium">Document</th>
               <th scope="col" class="px-5 py-3 font-medium">Category</th>
               <th scope="col" class="hidden px-5 py-3 font-medium lg:table-cell">Owner</th>
@@ -55,17 +107,22 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            @for (doc of page()!.content; track doc.id) {
-              <tr class="hover:bg-slate-50">
+            @for (doc of rows(); track doc.id) {
+              <tr class="hover:bg-slate-50" [class.bg-brand-50]="selectedIds().has(doc.id)">
+                <td class="px-5 py-3">
+                  @if (canModify(doc)) {
+                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300"
+                           [checked]="selectedIds().has(doc.id)" (change)="toggleRow(doc.id)"
+                           [attr.aria-label]="'Select ' + doc.title" />
+                  }
+                </td>
                 <td class="px-5 py-3">
                   <p class="font-medium text-slate-900">{{ doc.title }}</p>
                   <p class="text-xs text-slate-500">
                     {{ describeFileType(doc.contentType) }} · {{ doc.fileName }}
                   </p>
                 </td>
-                <td class="px-5 py-3 text-slate-600">
-                  {{ doc.categoryName ?? '—' }}
-                </td>
+                <td class="px-5 py-3 text-slate-600">{{ doc.categoryName ?? '—' }}</td>
                 <td class="hidden px-5 py-3 text-slate-600 lg:table-cell">{{ doc.ownerName }}</td>
                 <td class="hidden px-5 py-3 text-slate-600 sm:table-cell">
                   {{ formatBytes(doc.sizeBytes) }}
@@ -113,13 +170,39 @@
 </div>
 
 @if (dialogOpen()) {
-  <div class="fixed inset-0 z-30 grid place-items-center bg-slate-900/40 px-4 py-8"
+  <div class="fixed inset-0 z-30 grid place-items-center overflow-y-auto bg-slate-900/40 px-4 py-8"
        role="dialog" aria-modal="true">
     <form [formGroup]="form" (ngSubmit)="save()"
           class="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl" novalidate>
       <h2 class="text-lg font-semibold text-slate-900">
         {{ editing() ? 'Edit document' : 'Upload document' }}
       </h2>
+
+      <!-- Drop zone -->
+      <div (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)"
+           class="rounded-lg border-2 border-dashed px-4 py-6 text-center transition"
+           [class]="dragging() ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-slate-50'">
+        <p class="text-sm text-slate-600">
+          Drag a file here, or
+          <label for="file" class="cursor-pointer font-medium text-brand-600 hover:text-brand-700">
+            browse
+          </label>
+        </p>
+        <p class="mt-1 text-xs text-slate-400">
+          PDF, images, text, CSV, Word, Excel or PowerPoint · up to 25 MB
+        </p>
+        <input id="file" type="file" class="sr-only" (change)="onFileSelected($event)" />
+      </div>
+
+      <!-- Live preview of whatever was chosen -->
+      <app-file-preview [file]="selectedFile()" />
+
+      @if (editing() && !selectedFile()) {
+        <p class="text-xs text-slate-500">
+          Leave the file empty to change only the title, description or category.
+          Attaching a file creates a new version.
+        </p>
+      }
 
       <div>
         <label class="label" for="title">Title</label>
@@ -132,7 +215,7 @@
 
       <div>
         <label class="label" for="description">Description</label>
-        <textarea id="description" rows="3" formControlName="description" class="field"></textarea>
+        <textarea id="description" rows="2" formControlName="description" class="field"></textarea>
       </div>
 
       <div>
@@ -145,25 +228,13 @@
         </select>
       </div>
 
-      <div>
-        <label class="label" for="file">
-          {{ editing() ? 'Replace file (optional)' : 'File' }}
-        </label>
-        <input id="file" type="file" class="field" (change)="onFileSelected($event)" />
-        @if (editing()) {
-          <p class="mt-1 text-xs text-slate-500">
-            Uploading a file creates a new version. An identical file is rejected.
-          </p>
-        }
-      </div>
-
-      @if (error()) {
-        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ error() }}</p>
+      @if (dialogError()) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ dialogError() }}</p>
       }
 
       <div class="flex justify-end gap-2 pt-2">
         <button type="button" class="btn-secondary" (click)="closeDialog()">Cancel</button>
-        <button type="submit" class="btn-primary" [disabled]="saving()">
+        <button type="submit" class="btn-primary" [disabled]="saving() || !!fileProblem()">
           {{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Upload' }}
         </button>
       </div>

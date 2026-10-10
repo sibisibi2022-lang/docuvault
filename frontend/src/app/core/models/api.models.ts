@@ -112,3 +112,14 @@ export interface ProblemDetail {
   instance?: string;
   errors?: Record<string, string>;
 }
+
+export interface BulkFailure {
+  id: number;
+  reason: string;
+}
+
+export interface BulkResult {
+  requested: number;
+  succeeded: number;
+  failures: BulkFailure[];
+}
