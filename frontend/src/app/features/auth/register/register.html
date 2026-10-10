@@ -30,7 +30,7 @@
         <label class="label" for="password">Password</label>
         <input id="password" type="password" formControlName="password" autocomplete="new-password"
                class="field" [class.field-error]="form.controls.password.touched && form.controls.password.invalid" />
-        <p class="mt-1 text-xs text-slate-500">At least 12 characters.</p>
+        <p class="mt-1 text-xs text-slate-500">{{ passwordHint }}</p>
       </div>
 
       <div>

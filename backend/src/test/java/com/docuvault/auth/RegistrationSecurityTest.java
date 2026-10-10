@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.docuvault.shared.validation.PasswordRules;
 import com.docuvault.support.IntegrationTest;
 import com.docuvault.user.Role;
 import com.docuvault.user.UserRepository;
@@ -89,11 +90,38 @@ class RegistrationSecurityTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("a short password is rejected with a field error")
-    void rejectsWeakPassword() throws Exception {
+    @DisplayName("a password below the minimum length is rejected with a field error")
+    void rejectsTooShortPassword() throws Exception {
+        // One character under the limit, so the test pins the actual boundary
+        // rather than passing for any password that happens to be short.
+        String tooShort = "x".repeat(PasswordRules.MIN_LENGTH - 1);
+
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Weak\",\"email\":\"weak@example.com\",\"password\":\"short\"}"))
+                        .content("{\"name\":\"Weak\",\"email\":\"weak@example.com\",\"password\":\"" + tooShort + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.password").exists());
+    }
+
+    @Test
+    @DisplayName("a password of exactly the minimum length is accepted")
+    void acceptsMinimumLengthPassword() throws Exception {
+        String exactly = "x".repeat(PasswordRules.MIN_LENGTH);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Boundary\",\"email\":\"boundary@example.com\",\"password\":\"" + exactly + "\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("a password past BCrypt's 72-byte ceiling is rejected rather than silently truncated")
+    void rejectsOverlongPassword() throws Exception {
+        String tooLong = "x".repeat(PasswordRules.MAX_LENGTH + 1);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Long\",\"email\":\"long@example.com\",\"password\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.password").exists());
     }

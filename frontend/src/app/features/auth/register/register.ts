@@ -8,6 +8,11 @@ import {
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthApi } from '../../../core/api/auth.api';
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_HINT,
+} from '../../../shared/password-rules';
 
 /** Confirms the two password fields agree before anything is sent. */
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
@@ -27,6 +32,7 @@ export class RegisterComponent {
   private readonly api = inject(AuthApi);
   private readonly router = inject(Router);
 
+  protected readonly passwordHint = PASSWORD_HINT;
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -36,7 +42,11 @@ export class RegisterComponent {
       email: ['', [Validators.required, Validators.email]],
       // Mirrors the server's rule exactly, so the form cannot pass validation
       // locally and then fail server-side.
-      password: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(72)]],
+      password: ['', [
+        Validators.required,
+        Validators.minLength(PASSWORD_MIN_LENGTH),
+        Validators.maxLength(PASSWORD_MAX_LENGTH),
+      ]],
       confirmPassword: ['', [Validators.required]],
     },
     { validators: passwordsMatch },

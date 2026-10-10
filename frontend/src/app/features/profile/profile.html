@@ -53,7 +53,7 @@
           <label class="label" for="newPassword">New password</label>
           <input id="newPassword" type="password" formControlName="newPassword"
                  autocomplete="new-password" class="field" />
-          <p class="mt-1 text-xs text-slate-500">At least 12 characters.</p>
+          <p class="mt-1 text-xs text-slate-500">{{ passwordHint }}</p>
         </div>
 
         <button type="submit" class="btn-primary" [disabled]="savingPassword()">

@@ -5,6 +5,11 @@ import { AuthStore } from '../../core/auth/auth.store';
 import type { Role, UserProfile } from '../../core/models/api.models';
 import { formatDateTime } from '../../shared/format';
 import { ToastService } from '../../shared/toast.service';
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_HINT,
+} from '../../shared/password-rules';
 
 @Component({
   selector: 'app-profile',
@@ -25,6 +30,7 @@ export class ProfileComponent {
   protected readonly savingProfile = signal(false);
   protected readonly savingPassword = signal(false);
 
+  protected readonly passwordHint = PASSWORD_HINT;
   protected readonly roles: Role[] = ['ADMIN', 'MANAGER', 'EMPLOYEE'];
   protected readonly formatDateTime = formatDateTime;
 
@@ -34,7 +40,11 @@ export class ProfileComponent {
 
   protected readonly passwordForm = this.fb.nonNullable.group({
     currentPassword: ['', [Validators.required]],
-    newPassword: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(72)]],
+    newPassword: ['', [
+        Validators.required,
+        Validators.minLength(PASSWORD_MIN_LENGTH),
+        Validators.maxLength(PASSWORD_MAX_LENGTH),
+      ]],
   });
 
   constructor() {

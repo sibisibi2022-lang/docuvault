@@ -1,6 +1,7 @@
 package com.docuvault.auth;
 
 import com.docuvault.user.Role;
+import com.docuvault.shared.validation.PasswordRules;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -30,7 +31,8 @@ public final class AuthDtos {
             String email,
 
             @NotBlank(message = "Password is required")
-            @Size(min = 12, max = 72, message = "Password must be between 12 and 72 characters")
+            @Size(min = PasswordRules.MIN_LENGTH, max = PasswordRules.MAX_LENGTH,
+                    message = PasswordRules.LENGTH_MESSAGE)
             String password) {
     }
 
