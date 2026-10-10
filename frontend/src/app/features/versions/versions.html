@@ -1,0 +1,60 @@
+<div class="space-y-5">
+  <a routerLink="/documents" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+    ← Back to documents
+  </a>
+
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900">
+      {{ document()?.title ?? 'Version history' }}
+    </h1>
+    <p class="mt-1 text-sm text-slate-500">
+      Every upload is kept. Restoring an older file adds a new entry rather than erasing history.
+    </p>
+  </div>
+
+  @if (notice()) {
+    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
+  }
+  @if (error()) {
+    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
+  }
+
+  <div class="card overflow-hidden">
+    @if (loading()) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">Loading…</p>
+    } @else if (!versions().length) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">No versions recorded.</p>
+    } @else {
+      <ul class="divide-y divide-slate-100">
+        @for (version of versions(); track version.id) {
+          <li class="flex flex-wrap items-center gap-4 px-5 py-4">
+            <span class="badge shrink-0"
+                  [class]="isCurrent(version) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+              v{{ version.versionNumber }}{{ isCurrent(version) ? ' · current' : '' }}
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-slate-900">{{ version.fileName }}</p>
+              <p class="truncate text-xs text-slate-500">
+                {{ version.uploadedByName }} · {{ formatDateTime(version.createdAt) }}
+                · {{ formatBytes(version.sizeBytes) }}
+              </p>
+              <p class="mt-1 truncate font-mono text-[11px] text-slate-400" [title]="version.checksum">
+                sha256:{{ version.checksum.slice(0, 16) }}…
+              </p>
+            </div>
+
+            <div class="flex gap-2">
+              <button type="button" class="btn-secondary px-2 py-1 text-xs"
+                      (click)="download(version)">Download</button>
+              @if (canModify() && !isCurrent(version)) {
+                <button type="button" class="btn-secondary px-2 py-1 text-xs"
+                        (click)="restore(version)">Restore</button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

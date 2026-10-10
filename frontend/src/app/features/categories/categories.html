@@ -1,0 +1,81 @@
+<div class="space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Categories</h1>
+      <p class="mt-1 text-sm text-slate-500">How documents are filed across the workspace.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">New category</button>
+  </div>
+
+  @if (notice()) {
+    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
+  }
+  @if (error() && !dialogOpen()) {
+    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
+  }
+
+  <div class="card overflow-hidden">
+    @if (loading()) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">Loading…</p>
+    } @else if (!categories().length) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">No categories yet.</p>
+    } @else {
+      <ul class="divide-y divide-slate-100">
+        @for (category of categories(); track category.id) {
+          <li class="flex flex-wrap items-center gap-4 px-5 py-4">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-slate-900">{{ category.name }}</p>
+              <p class="text-sm text-slate-500">{{ category.description || 'No description' }}</p>
+            </div>
+            <span class="hidden text-xs text-slate-400 sm:block">
+              {{ formatDateTime(category.createdAt) }}
+            </span>
+            <div class="flex gap-2">
+              <button type="button" class="btn-secondary px-2 py-1 text-xs"
+                      (click)="openEdit(category)">Edit</button>
+              <button type="button" class="btn-danger px-2 py-1 text-xs"
+                      (click)="remove(category)">Delete</button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>
+
+@if (dialogOpen()) {
+  <div class="fixed inset-0 z-30 grid place-items-center bg-slate-900/40 px-4"
+       role="dialog" aria-modal="true">
+    <form [formGroup]="form" (ngSubmit)="save()"
+          class="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-xl" novalidate>
+      <h2 class="text-lg font-semibold text-slate-900">
+        {{ editing() ? 'Edit category' : 'New category' }}
+      </h2>
+
+      <div>
+        <label class="label" for="name">Name</label>
+        <input id="name" type="text" formControlName="name" class="field"
+               [class.field-error]="form.controls.name.touched && form.controls.name.invalid" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p class="mt-1 text-xs text-red-600">A name is required</p>
+        }
+      </div>
+
+      <div>
+        <label class="label" for="description">Description</label>
+        <textarea id="description" rows="3" formControlName="description" class="field"></textarea>
+      </div>
+
+      @if (error()) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ error() }}</p>
+      }
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" class="btn-secondary" (click)="closeDialog()">Cancel</button>
+        <button type="submit" class="btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

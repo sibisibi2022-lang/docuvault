@@ -1,0 +1,129 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900">Profile</h1>
+    <p class="mt-1 text-sm text-slate-500">Your account details and security settings.</p>
+  </div>
+
+  @if (notice()) {
+    <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ notice() }}</p>
+  }
+  @if (error()) {
+    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="text-sm text-slate-500">Loading…</p>
+  } @else if (profile(); as me) {
+    <div class="grid gap-6 lg:grid-cols-2">
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="card space-y-4 p-6" novalidate>
+        <h2 class="text-sm font-semibold text-slate-900">Account</h2>
+
+        <div>
+          <label class="label" for="name">Name</label>
+          <input id="name" type="text" formControlName="name" class="field" />
+        </div>
+
+        <div>
+          <span class="label">Email</span>
+          <p class="text-sm text-slate-600">{{ me.email }}</p>
+          <p class="mt-1 text-xs text-slate-400">
+            Your email is your sign-in identifier and cannot be changed here.
+          </p>
+        </div>
+
+        <div>
+          <span class="label">Role</span>
+          <span class="badge bg-brand-50 text-brand-700">{{ me.role }}</span>
+          <p class="mt-1 text-xs text-slate-400">Only an administrator can change a role.</p>
+        </div>
+
+        <div>
+          <span class="label">Member since</span>
+          <p class="text-sm text-slate-600">{{ formatDateTime(me.createdAt) }}</p>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="savingProfile()">
+          {{ savingProfile() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </form>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="card space-y-4 p-6" novalidate>
+        <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
+
+        <div>
+          <label class="label" for="currentPassword">Current password</label>
+          <input id="currentPassword" type="password" formControlName="currentPassword"
+                 autocomplete="current-password" class="field" />
+        </div>
+
+        <div>
+          <label class="label" for="newPassword">New password</label>
+          <input id="newPassword" type="password" formControlName="newPassword"
+                 autocomplete="new-password" class="field" />
+          <p class="mt-1 text-xs text-slate-500">At least 12 characters.</p>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="savingPassword()">
+          {{ savingPassword() ? 'Updating…' : 'Update password' }}
+        </button>
+      </form>
+    </div>
+
+    @if (auth.isAdmin()) {
+      <div class="card overflow-hidden">
+        <div class="border-b border-slate-200 px-5 py-4">
+          <h2 class="text-sm font-semibold text-slate-900">People</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Roles are assigned here. Registration never grants one.
+          </p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" class="px-5 py-3 font-medium">Name</th>
+                <th scope="col" class="px-5 py-3 font-medium">Role</th>
+                <th scope="col" class="px-5 py-3 font-medium">Status</th>
+                <th scope="col" class="px-5 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (person of people(); track person.id) {
+                <tr>
+                  <td class="px-5 py-3">
+                    <p class="font-medium text-slate-900">{{ person.name }}</p>
+                    <p class="text-xs text-slate-500">{{ person.email }}</p>
+                  </td>
+                  <td class="px-5 py-3">
+                    <select class="field py-1 text-xs"
+                            [disabled]="person.id === me.id"
+                            (change)="changeRole(person, $any($event.target).value)">
+                      @for (role of roles; track role) {
+                        <option [value]="role" [selected]="person.role === role">{{ role }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td class="px-5 py-3">
+                    <span class="badge"
+                          [class]="person.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'">
+                      {{ person.enabled ? 'Active' : 'Disabled' }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    @if (person.id !== me.id) {
+                      <button type="button" class="btn-secondary px-2 py-1 text-xs"
+                              (click)="toggleEnabled(person)">
+                        {{ person.enabled ? 'Disable' : 'Enable' }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</div>

@@ -1,0 +1,50 @@
+<div class="flex min-h-screen items-center justify-center px-4 py-12">
+  <div class="w-full max-w-sm">
+    <div class="mb-8 text-center">
+      <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-brand-600 font-bold text-white">
+        DV
+      </span>
+      <h1 class="text-2xl font-semibold text-slate-900">Welcome back</h1>
+      <p class="mt-1 text-sm text-slate-500">Sign in to your DocuVault workspace</p>
+    </div>
+
+    @if (sessionExpired()) {
+      <p class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">
+        Your session expired. Please sign in again.
+      </p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="card space-y-4 p-6" novalidate>
+      <div>
+        <label class="label" for="email">Email</label>
+        <input id="email" type="email" formControlName="email" autocomplete="email"
+               class="field" [class.field-error]="form.controls.email.touched && form.controls.email.invalid" />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <p class="mt-1 text-xs text-red-600">Enter a valid email address</p>
+        }
+      </div>
+
+      <div>
+        <label class="label" for="password">Password</label>
+        <input id="password" type="password" formControlName="password" autocomplete="current-password"
+               class="field" [class.field-error]="form.controls.password.touched && form.controls.password.invalid" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p class="mt-1 text-xs text-red-600">Password is required</p>
+        }
+      </div>
+
+      @if (error()) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ error() }}</p>
+      }
+
+      <button type="submit" class="btn-primary w-full" [disabled]="submitting()">
+        {{ submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-slate-500">
+      No account yet?
+      <a routerLink="/register" class="font-medium text-brand-600 hover:text-brand-700">Create one</a>
+    </p>
+  </div>
+</div>

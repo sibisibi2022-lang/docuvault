@@ -1,0 +1,22 @@
+# Local development dependencies. Production uses Neon for Postgres and an
+# S3-compatible bucket for files, so nothing here is deployed.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: docuvault-postgres
+    environment:
+      POSTGRES_DB: docuvault
+      POSTGRES_USER: docuvault
+      POSTGRES_PASSWORD: docuvault
+    ports:
+      - "5432:5432"
+    volumes:
+      - docuvault-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuvault -d docuvault"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  docuvault-pgdata:

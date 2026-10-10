@@ -1,0 +1,54 @@
+<div class="space-y-5">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900">Audit log</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      A read-only record of who did what. Entries cannot be edited or removed.
+    </p>
+  </div>
+
+  <select class="field max-w-xs" (change)="applyFilter($any($event.target).value)">
+    <option value="">All activity</option>
+    @for (action of actions; track action) {
+      <option [value]="action" [selected]="filter() === action">{{ label(action) }}</option>
+    }
+  </select>
+
+  @if (error()) {
+    <p class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ error() }}</p>
+  }
+
+  <div class="card overflow-hidden">
+    @if (loading()) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">Loading…</p>
+    } @else if (!page()?.content?.length) {
+      <p class="px-5 py-12 text-center text-sm text-slate-500">Nothing recorded yet.</p>
+    } @else {
+      <ul class="divide-y divide-slate-100">
+        @for (entry of page()!.content; track entry.id) {
+          <li class="flex flex-wrap items-start gap-4 px-5 py-3">
+            <span class="badge shrink-0" [class]="tone(entry.action)">{{ label(entry.action) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-slate-900">{{ entry.description }}</p>
+              <p class="text-xs text-slate-500">{{ entry.actorName }}</p>
+            </div>
+            <time class="shrink-0 text-xs text-slate-400">{{ formatDateTime(entry.createdAt) }}</time>
+          </li>
+        }
+      </ul>
+
+      @if (page()!.totalPages > 1) {
+        <div class="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-sm">
+          <span class="text-slate-500">
+            Page {{ page()!.number + 1 }} of {{ page()!.totalPages }}
+          </span>
+          <div class="flex gap-2">
+            <button type="button" class="btn-secondary px-3 py-1 text-xs"
+                    [disabled]="page()!.first" (click)="goToPage(page()!.number - 1)">Previous</button>
+            <button type="button" class="btn-secondary px-3 py-1 text-xs"
+                    [disabled]="page()!.last" (click)="goToPage(page()!.number + 1)">Next</button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

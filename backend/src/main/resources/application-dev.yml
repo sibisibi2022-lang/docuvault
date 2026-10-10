@@ -1,0 +1,23 @@
+# Local development against the Postgres in docker-compose.yml.
+spring:
+  datasource:
+    # sslmode=disable because the local container serves plaintext. Neon
+    # requires sslmode=require — see backend/.env.example.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/docuvault?sslmode=disable}
+    username: ${DB_USERNAME:docuvault}
+    password: ${DB_PASSWORD:docuvault}
+  jpa:
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+docuvault:
+  jwt:
+    # Dev-only placeholder. Production supplies JWT_SECRET from the environment
+    # and the app will not boot without it.
+    secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LW5vdC1mb3ItcHJvZHVjdGlvbi11c2UtMzJiKw==}
+
+logging:
+  level:
+    com.docuvault: DEBUG
+    org.springframework.security: INFO

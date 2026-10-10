@@ -1,0 +1,43 @@
+# Netlify build settings. "Base directory" in the UI should be `frontend`,
+# or leave this file at the repo root and set base = "frontend" below.
+
+[build]
+  base    = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist/frontend/browser"
+
+[build.environment]
+  NODE_VERSION = "22.12.0"
+
+# Angular is a single-page app: the server has no file at /documents, so every
+# unmatched path must return index.html and let the router decide. Without this
+# rule a hard refresh or a shared deep link returns a 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Hashed build output never changes behind a given URL, so it can be cached
+# permanently. index.html must not be, or users keep running the old bundle.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

@@ -1,0 +1,15 @@
+docuvault:
+  jwt:
+    secret: dGVzdC1vbmx5LXNpZ25pbmcta2V5LWF0LWxlYXN0LTMyLWJ5dGVzLWxvbmc=
+    issuer: docuvault
+    access-token-ttl: PT1H
+  cors:
+    allowed-origins: http://localhost:4200
+  storage:
+    type: local
+    local-directory: ./target/test-storage
+
+logging:
+  level:
+    com.docuvault: WARN
+    org.testcontainers: WARN

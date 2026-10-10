@@ -1,0 +1,25 @@
+# Build output
+target/
+dist/
+.angular/
+node_modules/
+
+# Local secrets — never commit these
+.env
+.env.*
+!.env.example
+*.local
+
+# Uploaded files (dev only; prod uses object storage)
+backend/storage/
+backend/uploads/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
