@@ -26,6 +26,9 @@ class VersioningTest extends IntegrationTest {
     private DocumentRepository documentRepository;
 
     @Autowired
+    private DocumentVersionRepository versionRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     private AuthenticatedUser owner;
@@ -85,6 +88,34 @@ class VersioningTest extends IntegrationTest {
         assertThat(restored.checksum()).isEqualTo(versionOne.checksum());
         // History is untouched: still two versions, with v1's content current.
         assertThat(restored.versionCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("deleting a document with version history succeeds and removes every row")
+    void deleteRemovesDocumentAndItsVersions() {
+        // Regression: the delete path used to load DocumentVersion entities to
+        // collect their storage keys. Flushing the parent's removal then made
+        // Hibernate abort with TransientPropertyValueException, so every delete
+        // of a document that had any version returned 500.
+        documentService.update(owner, documentId,
+                new DocumentDtos.UpdateRequest("Spec", null, null),
+                file("spec.pdf", "version two"));
+
+        assertThat(versionRepository.countByDocumentId(documentId)).isEqualTo(2);
+
+        documentService.delete(owner, documentId);
+
+        assertThat(documentRepository.existsById(documentId)).isFalse();
+        assertThat(versionRepository.countByDocumentId(documentId)).isZero();
+    }
+
+    @Test
+    @DisplayName("deleting a document that has only its first version succeeds")
+    void deleteSingleVersionDocument() {
+        documentService.delete(owner, documentId);
+
+        assertThat(documentRepository.existsById(documentId)).isFalse();
+        assertThat(versionRepository.countByDocumentId(documentId)).isZero();
     }
 
     private MockMultipartFile file(String name, String content) {

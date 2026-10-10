@@ -15,6 +15,7 @@ import com.docuvault.user.User;
 import com.docuvault.user.UserRepository;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -260,11 +261,16 @@ public class DocumentService {
         // Collect the keys before the rows go, then delete the blobs. Doing it
         // in this order means a storage failure leaves orphaned objects rather
         // than rows pointing at files that no longer exist.
-        var keys = versionRepository.findByDocumentId(id).stream()
-                .map(DocumentVersion::getStorageKey)
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        //
+        // The keys come back as plain strings rather than entities on purpose:
+        // managed DocumentVersion instances pointing at a Document being removed
+        // make Hibernate fail the flush with TransientPropertyValueException.
+        Set<String> keys = new LinkedHashSet<>(versionRepository.findStorageKeysByDocumentId(id));
         keys.add(document.getStorageKey());
 
+        // Children first, then the parent, so the delete order is explicit here
+        // rather than left to the schema's cascade.
+        versionRepository.deleteAllByDocumentId(id);
         documentRepository.delete(document);
         documentRepository.flush();
 
