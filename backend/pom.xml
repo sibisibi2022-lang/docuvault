@@ -45,7 +45,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
         <!-- Schema is owned by versioned migrations, never by Hibernate -->
         <!-- Spring Boot 4 moved each integration's auto-configuration into its
              own module, so flyway-core alone no longer triggers migration on
